@@ -7,7 +7,6 @@
 - 客户端演示分为两种：
   - `robot_client` 为go实现的游戏压测客户端，使用`tcp/protobuf`协议
   - `nodes/web/view/` 为h5实现的游戏客户端，使用`websocket/protobuf`协议
-- 欢迎开发者一起入群讨论（`QQ群：191651647`），构建更好的`cherry`生态。
 
 ## 要求
 
@@ -34,17 +33,10 @@
 > 本框架中所有节点都基于 nats 进行消息通信。
 > 正式环境请使用集群 nats-streaming-server 进行部署 `https://github.com/nats-io/nats-streaming-server`
 
-- Windows：`3rd/nat-server/run_nats.bat`
-- Mac：`nats-server`
-  
-> 窗口显示`Listening for client connections on 0.0.0.0:4222` 代表 nats 启动成功，nats 默认监听`4222`端口
-
 ### 2、启动参数配置
 
-- 找到`demo_cluster/nodes/main.go`，所有节点都从`main.go`启动
-- `VSCode`用户在左侧栏找到`运行和调试(Debug)`按钮,启动`gc-master`、`gc-center`、`gc-web-1`、`gc-gate-1`、`gc-game-10001`
-- `GoLand`用户配置启动参数(`Program arguments`)如下：
-  - `gc-master`       master --path=./config/demo-cluster.json --node=gc-master
+- 找到`demo_cluster/nodes/main.go`，所有节点都从`main.go`启动`gc-master`、`gc-center`、`gc-web-1`、`gc-gate-1`、`gc-game-10001`
+- 用户配置启动参数如下：
   - `gc-center`       center --path=./config/demo-cluster.json --node=gc-center
   - `gc-web-1`        web --path=./config/demo-cluster.json --node=gc-web-1
   - `gc-gate-1`       gate --path=./config/demo-cluster.json --node=gc-gate-1
