@@ -113,3 +113,141 @@
 ## 运行截图
 
 ![screenshot](screenshot.png)
+
+## 常见问题与解答
+
+### 1. 服务发现问题：Gate/Game 节点无法找到 Center 节点
+
+**问题现象**：Center 节点启动正常，但 Gate 和 Game 节点提示找不到 Center 节点，一直重试。
+
+**根本原因**：etcd 组件注册顺序错误，导致服务发现组件在初始化时不可用。
+
+**解决方案**：将 `cherryDiscovery.Register(cherryETCD.New())` 移到 `cherry.Configure()` 之前：
+
+```go
+func Run(profileFilePath, nodeID string) {
+    // 必须在 cherry.Configure() 之前注册
+    cherryDiscovery.Register(cherryETCD.New())
+    
+    app := cherry.Configure(
+        profileFilePath,
+        nodeID,
+        false,
+        cherry.Cluster,
+    )
+    // ...
+}
+```
+
+### 2. check_center 组件阻塞问题
+
+**问题现象**：节点启动时卡在 check_center 组件，无法完成初始化。
+
+**根本原因**：在 `OnAfterInit()` 中同步等待应用启动，但此时应用尚未进入运行状态，导致死循环。
+
+**解决方案**：使用 goroutine 异步执行检查逻辑：
+
+```go
+func (c *Component) OnAfterInit() {
+    go c.waitCenter()
+}
+
+func (c *Component) waitCenter() {
+    // 等待应用启动
+    for !c.App().Running() {
+        time.Sleep(100 * time.Millisecond)
+    }
+    
+    // 检查 Center 节点
+    for {
+        if rpcCenter.Ping(c.App()) {
+            break
+        }
+        time.Sleep(2 * time.Second)
+        cherryLogger.Warn("center node connect fail. retrying in 2 seconds.")
+    }
+}
+```
+
+### 3. GetAgent 传参问题
+
+**问题**：为什么 `GetAgent(p.ActorID(), 0)` 第二个参数传 0？
+
+**解答**：`GetAgent` 函数优先使用第一个参数（SID）查找，只有当 SID 为空时才使用第二个参数（UID）：
+
+```go
+func GetAgent(sid string, uid cfacade.UID) (*Agent, bool) {
+    if sid != "" {
+        return GetAgentWithSID(sid)  // 优先用 SID
+    }
+    if uid > 0 {
+        return GetAgentWithUID(uid)
+    }
+    return nil, false
+}
+```
+
+- `p.ActorID()` 返回的是 SID，不为空，所以第二个参数 `0` 是占位符，不会被使用。
+- 传 `session.Uid` 是为了双重保险：先用 SID 找，找不到再用 UID 找。
+
+### 4. 功能划分：Gate vs Game 节点
+
+| 特性 | Gate 节点 | Game 节点 |
+|-----|-----------|-----------|
+| 网络连接管理 | 负责 | 不负责 |
+| 会话管理 | 负责 | 不负责 |
+| 消息路由转发 | 负责 | 不负责 |
+| 安全验证 | 负责（token验证） | 不负责 |
+| 游戏逻辑处理 | 不负责 | 负责 |
+| 玩家状态管理 | 不负责 | 负责 |
+| 数据库操作 | 不负责 | 负责 |
+
+**经验法则**：
+- 如果功能涉及**网络连接、会话管理、简单验证** → 放在 Gate
+- 如果功能涉及**玩家数据、游戏逻辑、复杂计算** → 放在 Game
+
+### 5. 区服分配机制
+
+Gate 层可以根据用户的区服 ID 将玩家分配到不同的 Game 节点：
+
+1. **登录时选择区服**：客户端发送 `LoginRequest` 时携带 `serverId`
+2. **保存到 Session**：Gate 将 `serverId` 保存到 session 中
+3. **消息路由**：后续消息根据 session 中的 `serverId` 路由到对应的 Game 节点
+
+```go
+// 登录时保存区服 ID
+agent.Session().Set(sessionKey.ServerID, cstring.ToString(req.ServerId))
+
+// 消息路由时使用
+serverId := session.GetString(sessionKey.ServerID)
+targetPath := cfacade.NewChildPath(serverId, "player", childId)
+```
+
+### 6. login 和 setSession 的调用顺序
+
+**调用顺序**：`login` → `setSession`
+
+1. **login**：客户端登录时调用，验证身份并绑定 uid
+2. **setSession**：玩家进入游戏后，由 Game 节点远程调用，设置 session 中的玩家属性
+
+```
+客户端登录 → login() → 验证 token → 绑定 uid → 返回结果
+玩家进入游戏 → Game 节点调用 setSession() → 设置 PlayerID 等属性
+```
+
+### 7. Agent 创建时机
+
+**Agent 在客户端建立连接时创建**：
+
+```go
+agentActor.SetOnNewAgent(func(newAgent *pomelo.Agent) {
+    childActor := &ActorAgent{}
+    newAgent.AddOnClose(childActor.onSessionClose)
+    agentActor.Child().Create(newAgent.SID(), childActor) // actorID == SID
+})
+```
+
+创建流程：
+1. 客户端连接到 Gate 节点
+2. pomelo 连接器创建 `Agent` 对象
+3. 创建对应的 `ActorAgent`，并以 SID 作为 actorID
