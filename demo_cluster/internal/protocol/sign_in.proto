@@ -1,0 +1,42 @@
+syntax = "proto3";
+option go_package = "/pb";
+package pb;
+
+
+
+
+
+// 签到请求
+message SignInRequest {
+    int64 playerId = 1;
+}
+
+// 签到响应
+message SignInResponse {
+    int32 code = 1;
+    int32 continuousDays = 2;      // 连续签到天数
+    int32 todayReward = 3;          // 今日奖励
+    repeated int64 signInDates = 4; // 已签到日期列表
+}
+
+// 签到状态
+message SignInStatus {
+    int64 playerId = 1;
+    int32 continuousDays = 2;
+    bool hasSignedToday = 3;
+}
+
+// 签到记录
+message SignInRecord {
+    int64 playerId = 1;
+    string lastSignInDate = 2;
+    int32 continuousDays = 3;
+    int32 totalSignInDays = 4;
+    int32 todayReward = 5;
+}
+
+// 签到结果
+message SignInResult {
+    int32 continuousDays = 1;
+    int32 todayReward = 2;
+}

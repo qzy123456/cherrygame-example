@@ -1,0 +1,9 @@
+
+# Default ignored files
+.idea/
+bin/
+logs/
+*.exe
+cherry/
+go.work
+go.work.sum
