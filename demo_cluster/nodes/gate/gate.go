@@ -2,6 +2,7 @@ package gate
 
 import (
 	"encoding/binary"
+	"log/slog"
 	"time"
 
 	checkCenter "cherry-game/examples/demo_cluster/internal/component/check_center"
@@ -22,7 +23,7 @@ import (
 func Run(profileFilePath, nodeID string) {
 	//注册etcd服务发现（必须在cherry.Configure()之前调用）
 	cherryDiscovery.Register(cherryETCD.New())
-	
+
 	// 创建一个cherry实例
 	app := cherry.Configure(
 		profileFilePath,
@@ -54,6 +55,7 @@ func buildPomeloParser(app *cherry.AppBuilder) cfacade.INetParser {
 	agentActor.AddConnector(cconnector.NewWS(app.Address()))
 	//当有新连接创建Agent时，启动一个自定义(ActorAgent)的子actor
 	agentActor.SetOnNewAgent(func(newAgent *pomelo.Agent) {
+		slog.Info("用户开始链接？或者gate启动？")
 		childActor := &ActorAgent{}
 		newAgent.AddOnClose(childActor.onSessionClose)
 		agentActor.Child().Create(newAgent.SID(), childActor) // actorID == sid

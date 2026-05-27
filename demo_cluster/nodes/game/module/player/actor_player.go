@@ -8,6 +8,7 @@ import (
 	sessionKey "cherry-game/examples/demo_cluster/internal/session_key"
 	"cherry-game/examples/demo_cluster/nodes/game/db"
 	"cherry-game/examples/demo_cluster/nodes/game/module/online"
+	"log/slog"
 
 	cstring "github.com/cherry-game/cherry/extend/string"
 	clog "github.com/cherry-game/cherry/logger"
@@ -42,6 +43,7 @@ func (p *actorPlayer) OnStop() {
 
 // sessionClose 接收角色session关闭处理
 func (p *actorPlayer) sessionClose() {
+	slog.Info("用户链接关闭")
 	online.UnBindPlayer(p.uid)
 	p.isOnline = false
 	p.Exit()
@@ -51,6 +53,7 @@ func (p *actorPlayer) sessionClose() {
 
 // playerSelect 玩家查询角色列表
 func (p *actorPlayer) playerSelect(session *cproto.Session, _ *pb.None) {
+	slog.Info("查询用户角色列表--》")
 	response := &pb.PlayerSelectResponse{}
 
 	playerId := db.GetPlayerIdWithUID(session.Uid)
@@ -68,6 +71,7 @@ func (p *actorPlayer) playerSelect(session *cproto.Session, _ *pb.None) {
 
 // playerCreate 玩家创角
 func (p *actorPlayer) playerCreate(session *cproto.Session, req *pb.PlayerCreateRequest) {
+	slog.Info("用户创建--》", req)
 	if req.Gender > 1 {
 		p.ResponseCode(session, code.PlayerCreateFail)
 		return
@@ -116,6 +120,7 @@ func (p *actorPlayer) playerCreate(session *cproto.Session, req *pb.PlayerCreate
 
 // playerEnter 玩家进入游戏
 func (p *actorPlayer) playerEnter(session *cproto.Session, req *pb.Int64) {
+	slog.Info("用户进入游戏--》", req)
 	playerId := req.Value
 	if playerId < 1 {
 		p.ResponseCode(session, code.PlayerIDError)

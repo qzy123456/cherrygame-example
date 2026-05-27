@@ -1,6 +1,7 @@
 package account
 
 import (
+	"log/slog"
 	"strings"
 
 	"cherry-game/examples/demo_cluster/internal/code"
@@ -29,6 +30,7 @@ func (p *ActorAccount) OnInit() {
 
 // registerDevAccount 注册开发者帐号
 func (p *ActorAccount) registerDevAccount(req *pb.DevRegister) int32 {
+	slog.Info("center用户创建请求信息--》", req)
 	accountName := req.AccountName
 	password := req.Password
 
@@ -49,6 +51,7 @@ func (p *ActorAccount) registerDevAccount(req *pb.DevRegister) int32 {
 
 // getDevAccount 根据帐号名获取开发者帐号表
 func (p *ActorAccount) getDevAccount(req *pb.DevRegister) (*pb.Int64, int32) {
+	slog.Info("center获取用户信息--》", req)
 	accountName := req.AccountName
 	password := req.Password
 
@@ -62,6 +65,7 @@ func (p *ActorAccount) getDevAccount(req *pb.DevRegister) (*pb.Int64, int32) {
 
 // getUID 获取uid
 func (p *ActorAccount) getUID(req *pb.User) (*pb.Int64, int32) {
+	slog.Info("center用户uid信息--》", req)
 	uid, ok := db.BindUID(req.SdkId, req.Pid, req.OpenId)
 	if uid == 0 || ok == false {
 		return nil, code.AccountBindFail

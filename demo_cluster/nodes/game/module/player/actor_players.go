@@ -1,6 +1,7 @@
 package player
 
 import (
+	"log/slog"
 	"time"
 
 	"cherry-game/examples/demo_cluster/internal/event"
@@ -48,6 +49,7 @@ func (p *ActorPlayers) OnFindChild(msg *cfacade.Message) (cfacade.IActor, bool) 
 
 // onLoginEvent 玩家登陆事件处理
 func (p *ActorPlayers) onLoginEvent(e cfacade.IEventData) {
+	slog.Info("登录事件--》")
 	evt, ok := e.(*event.PlayerLogin)
 	if ok == false {
 		return
@@ -61,6 +63,7 @@ func (p *ActorPlayers) onLoginEvent(e cfacade.IEventData) {
 
 // onLoginEvent 玩家登出事件处理
 func (p *ActorPlayers) onLogoutEvent(e cfacade.IEventData) {
+	slog.Info("用户登出--》")
 	evt, ok := e.(*event.PlayerLogout)
 	if !ok {
 		return

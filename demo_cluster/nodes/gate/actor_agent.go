@@ -7,6 +7,7 @@ import (
 	rpcCenter "cherry-game/examples/demo_cluster/internal/rpc/center"
 	sessionKey "cherry-game/examples/demo_cluster/internal/session_key"
 	"cherry-game/examples/demo_cluster/internal/token"
+	"log/slog"
 
 	cstring "github.com/cherry-game/cherry/extend/string"
 	cfacade "github.com/cherry-game/cherry/facade"
@@ -37,6 +38,7 @@ func (p *ActorAgent) OnInit() {
 }
 
 func (p *ActorAgent) setSession(req *pb.StringKeyValue) {
+	slog.Info("设置用户session,请求信息--》", req.Value, req.Key)
 	if req.Key == "" {
 		return
 	}
@@ -47,6 +49,7 @@ func (p *ActorAgent) setSession(req *pb.StringKeyValue) {
 
 // login 用户登录，验证帐号 (*pb.LoginResponse, int32)
 func (p *ActorAgent) login(session *cproto.Session, req *pb.LoginRequest) {
+	slog.Info("用户登录请求信息--》", req)
 	agent, found := pomelo.GetAgent(p.ActorID(), session.Uid)
 	if !found {
 		return
