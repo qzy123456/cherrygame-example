@@ -106,6 +106,10 @@ func GetUID(app cfacade.IApplication, sdkId, pid int32, openId string) (cfacade.
 
 func GetCenterNodeID(app cfacade.IApplication) string {
 	list := app.Discovery().ListByType(centerType)
+	gateList := app.Discovery().ListByType("gate")
+	clog.Info("获取网关列表%v", gateList)
+	gameList := app.Discovery().ListByType("game")
+	clog.Info("获取game列表%v", gameList)
 	if len(list) > 0 {
 		return list[0].GetNodeID()
 	}
