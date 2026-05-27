@@ -2,14 +2,12 @@ package main
 
 import (
 	"cherry-game/examples/demo_cluster/nodes/web"
-	"fmt"
 	"os"
 
 	"cherry-game/examples/demo_cluster/nodes/center"
 	"cherry-game/examples/demo_cluster/nodes/game"
 	"cherry-game/examples/demo_cluster/nodes/gate"
 
-	cherryConst "github.com/cherry-game/cherry/const"
 	"github.com/urfave/cli/v2"
 )
 
@@ -18,7 +16,6 @@ func main() {
 		Name:        "game cluster node",
 		Description: "game cluster node examples",
 		Commands: []*cli.Command{
-			versionCommand(),
 			centerCommand(),
 			gateCommand(),
 			gameCommand(),
@@ -27,19 +24,6 @@ func main() {
 	}
 
 	_ = app.Run(os.Args)
-}
-
-func versionCommand() *cli.Command {
-	return &cli.Command{
-		Name:      "version",
-		Aliases:   []string{"ver", "v"},
-		Usage:     "view version",
-		UsageText: "game cluster node version",
-		Action: func(c *cli.Context) error {
-			fmt.Println(cherryConst.Version())
-			return nil
-		},
-	}
 }
 
 func centerCommand() *cli.Command {
