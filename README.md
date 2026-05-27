@@ -35,7 +35,7 @@
 
 ### 2、启动参数配置
 
-- 找到`demo_cluster/nodes/main.go`，所有节点都从`main.go`启动`gc-master`、`gc-center`、`gc-web-1`、`gc-gate-1`、`gc-game-10001`
+- 找到`demo_cluster/nodes/main.go`，所有节点都从`main.go`启动`gc-center`、`gc-web-1`、`gc-gate-1`、`gc-game-10001、2`
 - 用户配置启动参数如下：
   - `gc-center`       center --path=./config/demo-cluster.json --node=gc-center
   - `gc-web-1`        web --path=./config/demo-cluster.json --node=gc-web-1
@@ -54,7 +54,7 @@
 - 找到`demo_cluster/robot_client/main.go` 文件,并执行
 - 机器人执行逻辑为：`注册帐号`，`登陆获取token`、`连接网关`、`用户登录游戏服`、`查看角色`、`创建角色`、`进入角色`
 - 默认设定为创建1000个帐号，可自行调整`maxRobotNum`参数进行测试
-- 执行完成后，从game节点的`Console`可以查看到`onlineCount = 50000`字样
+- 执行完成后，从game节点的`Console`可以查看到`onlineCount = 1000`字样
 
 #### 启动 h5 客户端
 
@@ -86,7 +86,7 @@
 - `robot_client` 压测机器人(tcp/protobuf协议)
 - `build_protocol.bat` 生成protobuf结构代码到`internal/pb/`目录
 
-### master节点--可以舍弃
+### master节点--本示例舍弃-采用etcd
 
 - master 节点主要用于实现最基础的发现服务,基于nats构建。
 - 正式环境也可配置为etcd方式提供发现服务。
