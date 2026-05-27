@@ -40,7 +40,8 @@
   - `gc-center`       center --path=./config/demo-cluster.json --node=gc-center
   - `gc-web-1`        web --path=./config/demo-cluster.json --node=gc-web-1
   - `gc-gate-1`       gate --path=./config/demo-cluster.json --node=gc-gate-1
-  - `gc-game-10001`   game --path=./config/demo-cluster.json --node=10001
+  - `gc-game-10001`   game --path=./config/demo-cluster.json --node=10001  #这俩配置是写死的
+  - `gc-game-10002`   game --path=./config/demo-cluster.json --node=10002  #这俩配置是写死的
 
 
 ## 测试
@@ -251,3 +252,27 @@ agentActor.SetOnNewAgent(func(newAgent *pomelo.Agent) {
 1. 客户端连接到 Gate 节点
 2. pomelo 连接器创建 `Agent` 对象
 3. 创建对应的 `ActorAgent`，并以 SID 作为 actorID
+
+## web项目创建角色的整体时间流程
+```mermaid
+center服 
+    2026/05/27 11:12:46 INFO center用户创建请求信息--》 !BADKEY="accountName:\"test1\" password:\"test1\" ip:\"127.0.0.1\""
+    2026/05/27 11:13:04 INFO center获取用户信息--》 !BADKEY="accountName:\"test1\" password:\"test1\""
+    2026/05/27 11:13:20 INFO center用户uid信息--》 !BADKEY="sdkId:1 pid:2126001 openId:\"1\""
+gate服
+    2026/05/27 11:13:20 INFO 用户开始链接？或者gate启动？
+    2026/05/27 11:13:20 INFO 用户开始链接,路由--》 !BADKEY=gate.user.login
+    2026/05/27 11:13:20 INFO 用户登录请求信息--》 !BADKEY="serverId:10001 token:\"eyJwaWQiOjIxMjYwMDEsIm9wZW5faWQiOiIxIiwidHQiOjE3Nzk4NTE1ODQ0NzgsImhhc2giOiI1ZjA0MjY2YzA5MzViNmY1NWRiNDc0YjdkMTZkMTI2MyJ9\""
+    2026/05/27 11:13:20 INFO 用户开始链接,路由--》 !BADKEY=game.player.select
+    2026/05/27 11:13:20 INFO 路由分发--》 !BADKEY=game.player.select
+    2026/05/27 11:13:48 INFO 用户开始链接,路由--》 !BADKEY=game.player.create
+    2026/05/27 11:13:48 INFO 路由分发--》 !BADKEY=game.player.create
+    2026/05/27 11:14:14 INFO 用户开始链接,路由--》 !BADKEY=game.player.enter
+    2026/05/27 11:14:14 INFO 路由分发--》 !BADKEY=game.player.enter
+    2026/05/27 11:14:14 INFO 设置用户session,请求信息--》 1=player_i
+node服
+    2026/05/27 11:13:20 INFO 查询用户角色列表--》
+    2026/05/27 11:13:48 INFO 用户创建--》 !BADKEY="playerName:\"test1\""
+    2026/05/27 11:14:14 INFO 用户进入游戏--》 !BADKEY=value:1
+    2026/05/27 11:14:14 INFO 登录事件--》
+```
