@@ -7,6 +7,7 @@ import (
 	rpcCenter "cherry-game/examples/demo_cluster/internal/rpc/center"
 	sessionKey "cherry-game/examples/demo_cluster/internal/session_key"
 	"cherry-game/examples/demo_cluster/internal/token"
+	"encoding/json"
 	"log/slog"
 
 	cstring "github.com/cherry-game/cherry/extend/string"
@@ -34,6 +35,8 @@ func (p *ActorAgent) OnInit() {
 	})
 
 	p.Local().Register("login", p.login)
+	p.Local().Register("privateChat", p.privateChat)
+	p.Local().Register("privateChatJson", p.privateChatJSON)
 	p.Remote().Register("setSession", p.setSession)
 }
 
@@ -101,6 +104,9 @@ func (p *ActorAgent) login(session *cproto.Session, req *pb.LoginRequest) {
 	}
 
 	agent.Response(session, response)
+
+	// 注册用户位置到 Center 服
+	p.registerUserLocation(uint64(uid))
 }
 
 func (p *ActorAgent) validateToken(base64Token string) (*token.Token, int32) {
@@ -152,7 +158,179 @@ func (p *ActorAgent) onSessionClose(agent *pomelo.Agent) {
 		p.Call(targetPath, "sessionClose", nil)
 	}
 
+	// 从 Center 服移除用户位置
+	p.removeUserLocation(uint64(session.Uid))
+
 	// 自己退出
 	p.Exit()
 	clog.Infof("sessionClose path = %s", p.Path())
+}
+
+// registerUserLocation 注册用户位置到 Center 服
+func (p *ActorAgent) registerUserLocation(uid uint64) {
+	gateNodeID := p.App().NodeID()
+	targetPath := rpcCenter.GetTargetPath(p.App(), ".location")
+
+	req := &pb.Int64String{
+		Key:   int64(uid),
+		Value: gateNodeID,
+	}
+
+	rsp := &pb.Int32{}
+	errCode := p.App().ActorSystem().CallWait(".system", targetPath, "SetUserLocation", req, rsp)
+	if code.IsFail(errCode) {
+		clog.Warnf("Register user location failed. [uid = %d, gateNodeID = %s, error = %d]", uid, gateNodeID, errCode)
+	} else {
+		clog.Debugf("Register user location success. [uid = %d, gateNodeID = %s]", uid, gateNodeID)
+	}
+}
+
+// removeUserLocation 从 Center 服移除用户位置
+func (p *ActorAgent) removeUserLocation(uid uint64) {
+	targetPath := rpcCenter.GetTargetPath(p.App(), ".location")
+
+	req := &pb.Int64{
+		Value: int64(uid),
+	}
+
+	rsp := &pb.Int32{}
+	errCode := p.App().ActorSystem().CallWait(".system", targetPath, "RemoveUserLocation", req, rsp)
+	if code.IsFail(errCode) {
+		clog.Warnf("Remove user location failed. [uid = %d, error = %d]", uid, errCode)
+	} else {
+		clog.Debugf("Remove user location success. [uid = %d]", uid)
+	}
+}
+
+// privateChat 处理私聊请求
+func (p *ActorAgent) privateChat(session *cproto.Session, req *pb.PrivateChatRequest) {
+	// 获取发送者信息
+	senderUID := uint64(session.Uid)
+	targetUID := uint64(req.TargetUid)
+	content := req.Content
+
+	clog.Debugf("Private chat request. [sender = %d, target = %d, content = %s]", senderUID, targetUID, content)
+
+	// 查询目标用户所在的 Gate 节点
+	targetGateNode, errCode := p.queryUserLocation(targetUID)
+	if errCode != code.OK {
+		clog.Warnf("Query user location failed. [targetUID = %d, error = %d]", targetUID, errCode)
+		p.responsePrivateChat(session, code.PlayerNotOnline, "目标用户不在线")
+		return
+	}
+
+	// 判断是否在当前 Gate
+	currentGateNode := p.App().NodeID()
+	if targetGateNode == currentGateNode {
+		// 在同一 Gate，直接发送
+		errCode := sendToLocalUser(p.App(), targetUID, senderUID, content)
+		if errCode != code.OK {
+			clog.Warnf("Send to local user failed. [targetUID = %d, error = %d]", targetUID, errCode)
+			p.responsePrivateChat(session, code.PlayerNotOnline, "发送失败")
+			return
+		}
+	} else {
+		// 在其他 Gate，通过 RPC 转发
+		errCode := forwardToRemoteGate(p.App(), targetGateNode, targetUID, senderUID, content)
+		if errCode != code.OK {
+			clog.Warnf("Forward to remote gate failed. [gate = %s, targetUID = %d, error = %d]", targetGateNode, targetUID, errCode)
+			p.responsePrivateChat(session, code.PlayerNotOnline, "发送失败")
+			return
+		}
+	}
+
+	// 发送成功
+	p.responsePrivateChat(session, code.OK, "发送成功")
+}
+
+// privateChatJSON 处理私聊请求（JSON格式）
+func (p *ActorAgent) privateChatJSON(session *cproto.Session, req interface{}) {
+	type PrivateChatReq struct {
+		TargetUid uint64 `json:"targetUid"`
+		Content   string `json:"content"`
+	}
+
+	var chatReq PrivateChatReq
+
+	var jsonData []byte
+	switch v := req.(type) {
+	case []byte:
+		jsonData = v
+	case string:
+		jsonData = []byte(v)
+	default:
+		clog.Warnf("Unsupported request type: %T", req)
+		p.responsePrivateChat(session, code.Error, "请求格式错误")
+		return
+	}
+
+	if err := json.Unmarshal(jsonData, &chatReq); err != nil {
+		clog.Warnf("Parse private chat JSON request failed. [error = %v, data = %s]", err, string(jsonData))
+		p.responsePrivateChat(session, code.Error, "请求格式错误")
+		return
+	}
+
+	// 获取发送者信息
+	senderUID := uint64(session.Uid)
+	targetUID := chatReq.TargetUid
+	content := chatReq.Content
+
+	clog.Debugf("Private chat JSON request. [sender = %d, target = %d, content = %s]", senderUID, targetUID, content)
+
+	// 查询目标用户所在的 Gate 节点
+	targetGateNode, errCode := p.queryUserLocation(targetUID)
+	if errCode != code.OK {
+		clog.Warnf("Query user location failed. [targetUID = %d, error = %d]", targetUID, errCode)
+		p.responsePrivateChat(session, code.PlayerNotOnline, "目标用户不在线")
+		return
+	}
+
+	// 判断是否在当前 Gate
+	currentGateNode := p.App().NodeID()
+	if targetGateNode == currentGateNode {
+		// 在同一 Gate，直接发送
+		errCode := sendToLocalUser(p.App(), targetUID, senderUID, content)
+		if errCode != code.OK {
+			clog.Warnf("Send to local user failed. [targetUID = %d, error = %d]", targetUID, errCode)
+			p.responsePrivateChat(session, code.PlayerNotOnline, "发送失败")
+			return
+		}
+	} else {
+		// 在其他 Gate，通过 RPC 转发
+		errCode := forwardToRemoteGate(p.App(), targetGateNode, targetUID, senderUID, content)
+		if errCode != code.OK {
+			clog.Warnf("Forward to remote gate failed. [gate = %s, targetUID = %d, error = %d]", targetGateNode, targetUID, errCode)
+			p.responsePrivateChat(session, code.PlayerNotOnline, "发送失败")
+			return
+		}
+	}
+
+	// 发送成功
+	p.responsePrivateChat(session, code.OK, "发送成功")
+}
+
+// queryUserLocation 查询用户位置
+func (p *ActorAgent) queryUserLocation(uid uint64) (string, int32) {
+	targetGateNode, errCode := rpcCenter.GetUserLocation(p.App(), uid)
+	if errCode != code.OK {
+		return "", errCode
+	}
+	if targetGateNode == "" {
+		return "", code.PlayerNotOnline
+	}
+	return targetGateNode, code.OK
+}
+
+// responsePrivateChat 回复私聊请求
+func (p *ActorAgent) responsePrivateChat(session *cproto.Session, errCode int32, message string) {
+	agent, found := pomelo.GetAgent(p.ActorID(), session.Uid)
+	if !found {
+		return
+	}
+
+	response := &pb.PrivateChatResponse{
+		Code:    errCode,
+		Message: message,
+	}
+	agent.Response(session, response)
 }

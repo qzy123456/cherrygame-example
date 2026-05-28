@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "protobufjs": "^8.4.2"
+  }
+}

@@ -71,3 +71,12 @@ message StringKeyValue {
   string key = 1;
   string value = 2;
 }
+
+message Int64String {
+  int64 key = 1;
+  string value = 2;
+}
+
+message Int64StringList {
+  repeated Int64String list = 1;
+}

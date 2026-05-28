@@ -18,5 +18,6 @@ var (
 	PlayerCreateFail         int32 = 304 // 玩家创建角色失败
 	PlayerNotLogin           int32 = 305 // 玩家未登录
 	PlayerIDError            int32 = 306 // 玩家id错误
+	PlayerNotOnline          int32 = 307 // 玩家不在线
 	SignInAlready            int32 = 401 // 今日已签到
 )

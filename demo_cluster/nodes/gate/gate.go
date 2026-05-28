@@ -40,17 +40,26 @@ func Run(profileFilePath, nodeID string) {
 	app.Register(checkCenter.New())
 	// 注册数据配表组件，具体详见data-config的使用方法和参数配置
 	app.Register(data.New())
+
+	// 注册远程调用处理 Actor
+	app.AddActors(&ActorRemote{})
+
 	app.Register()
 
 	//启动cherry引擎
 	app.Startup()
 }
 
+var appInstance cfacade.IApplication
+
 func buildPomeloParser(app *cherry.AppBuilder) cfacade.INetParser {
+	// 保存应用实例供路由函数使用
+	appInstance = app
 	// 使用pomelo网络数据包解析器
 	agentActor := pomelo.NewActor("user")
-	//创建一个tcp监听，用于client/robot压测机器人连接网关tcp
-	agentActor.AddConnector(cconnector.NewTCP(":10011"))
+	//todo 创建一个tcp监听，用于client/robot压测机器人连接网关tcp
+	// 由于这里是写死的、启动多个网关的时候有问题、暂时注释
+	//agentActor.AddConnector(cconnector.NewTCP(":10011"))
 	//再创建一个websocket监听，用于h5客户端建立连接
 	agentActor.AddConnector(cconnector.NewWS(app.Address()))
 	//当有新连接创建Agent时，启动一个自定义(ActorAgent)的子actor
@@ -70,7 +79,8 @@ func buildPomeloParser(app *cherry.AppBuilder) cfacade.INetParser {
 // 构建简单的网络数据包解析器
 func buildSimpleParser(app *cherry.AppBuilder) cfacade.INetParser {
 	agentActor := simple.NewActor("user")
-	agentActor.AddConnector(cconnector.NewTCP(":10011"))
+	//todo 压测时候打开tcp监听，用于client/robot压测机器人连接网关tcp
+	//agentActor.AddConnector(cconnector.NewTCP(":10011"))
 	agentActor.AddConnector(cconnector.NewWS(app.Address()))
 
 	agentActor.SetOnNewAgent(func(newAgent *simple.Agent) {

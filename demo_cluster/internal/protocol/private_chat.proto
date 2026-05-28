@@ -1,0 +1,24 @@
+syntax = "proto3";
+option go_package = "/pb";
+package pb;
+
+// 私聊消息请求
+message PrivateChatRequest {
+    uint64 targetUid = 1;   // 目标用户ID
+    string content = 2;      // 消息内容
+}
+
+// 私聊消息响应
+message PrivateChatResponse {
+    int32 code = 1;          // 错误码
+    string message = 2;      // 提示信息
+}
+
+// 私聊消息推送
+message PrivateChatPush {
+    uint64 targetUid = 1;    // 目标用户ID
+    uint64 fromUid = 2;      // 发送者ID
+    string fromName = 3;     // 发送者昵称
+    string content = 4;      // 消息内容
+    int64 timestamp = 5;     // 时间戳
+}

@@ -4,6 +4,7 @@ import (
 	"cherry-game/examples/demo_cluster/internal/data"
 	"cherry-game/examples/demo_cluster/nodes/center/db"
 	"cherry-game/examples/demo_cluster/nodes/center/module/account"
+	"cherry-game/examples/demo_cluster/nodes/center/module/location"
 	"cherry-game/examples/demo_cluster/nodes/center/module/ops"
 	"cherry-game/examples/demo_cluster/nodes/center/module/sign_in"
 
@@ -32,6 +33,7 @@ func Run(profileFilePath, nodeID string) {
 		&account.ActorAccount{},
 		&ops.ActorOps{},
 		&sign_in.ActorSignIn{},
+		&location.ActorLocation{},
 	)
 
 	app.Startup()

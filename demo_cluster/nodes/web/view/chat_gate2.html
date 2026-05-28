@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Chat Client - Gate 2</title>
+    <meta charset="utf-8">
+    <script src="http://127.0.0.1:8081/static/pb.js"></script>
+    <script src="http://127.0.0.1:8081/static/protocol.js" type="text/javascript"></script>
+    <script src="http://127.0.0.1:8081/static/pomelo-client-protobuf.js" type="text/javascript"></script>
+    <script src="http://127.0.0.1:8081/static/jquery-3.6.1.min.js"></script>
+    <script src="http://127.0.0.1:8081/static/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="http://127.0.0.1:8081/static/bootstrap.min.css">
+    <style type="text/css">
+        .chat-container {
+            max-width: 800px;
+            margin: 20px auto;
+        }
+        .chat-messages {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .message-sent {
+            background-color: #e3f2fd;
+            text-align: right;
+        }
+        .message-received {
+            background-color: #f3e5f5;
+            text-align: left;
+        }
+        .col-center-block {
+            position: absolute;
+            top: 50%;
+            -webkit-transform: translateY(-50%);
+            -moz-transform: translateY(-50%);
+            -ms-transform: translateY(-50%);
+            -o-transform: translateY(-50%);
+            transform: translateY(-50%);
+            min-height: 300px;
+            height: auto;
+        }
+    </style>
+</head>
+
+<body>
+<!-- 聊天面板 -->
+<div id="chat-panel" class="chat-container" style="display:none;">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3 class="panel-title">私聊测试 - 网关2 (gc-gate-2)</h3>
+            <div class="pull-right">
+                <span id="user-info" class="text-muted"></span>
+                <button type="button" class="btn btn-xs btn-danger" id="btn-logout">退出</button>
+            </div>
+        </div>
+        <div class="panel-body">
+            <div class="row">
+                <div class="col-md-9">
+                    <!-- 聊天消息 -->
+                    <div id="chat-messages" class="chat-messages">
+                    </div>
+                    <!-- 输入框 -->
+                    <div class="input-group">
+                        <input type="text" id="target-uid" class="form-control" placeholder="目标用户UID" style="width: 150px; display: inline;">
+                        <input type="text" id="message-input" class="form-control" placeholder="输入消息...">
+                        <span class="input-group-btn">
+                                <button class="btn btn-primary" id="btn-send">发送</button>
+                            </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 注册登录弹窗 -->
+<div class="modal fade" id="panel_env" role="dialog" data-backdrop="static" aria-labelledby="myModalLabel">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="myModalLabel">
+                    账号-注册&登录 - 网关1
+                </h4>
+            </div>
+            <div class="modal-body">
+                <form class="form-horizontal" role="form">
+                    <div class="form-group">
+                        <label class="col-sm-4 control-label">web节点</label>
+                        <div class="col-sm-6">
+                            <select class="form-control" id="web-url">
+                                <option value="http://127.0.0.1:8081">本机 127.0.0.1:8081</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-4 control-label">账号</label>
+                        <div class="col-sm-6">
+                            <input class="form-control" id="account-name" type="text" value="test1">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-4 control-label">密码</label>
+                        <div class="col-sm-6">
+                            <input class="form-control" id="account-password" type="text" value="test1">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-4 control-label">sdk包id</label>
+                        <div class="col-sm-6">
+                            <input class="form-control" id="pid" type="text" value="2126001">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-4 control-label"></label>
+                        <div class="col-sm-6">
+                            <button type="button" class="btn btn-primary" id="btn-reg">注册</button>
+                            <button type="button" class="btn btn-primary" id="btn-login">登录</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-4 control-label"></label>
+                        <div class="col-sm-6 alert alert-danger" id="account-msg">
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+
+<script>
+    var url, accountName, accountPassword, pid, token;
+    var serverId = "10001";
+    var gateHost = "127.0.0.1";
+    var gatePort = "10020";
+    var currentUid;
+
+    $(document).ready(function () {
+        $('#panel_env').modal("show");
+        $("#account-msg").hide();
+
+        $("#btn-send").click(sendMessage);
+        $("#btn-logout").click(logout);
+        $("#btn-reg").click(account_register);
+        $("#btn-login").click(account_login);
+        $("#message-input").keypress(function(e) {
+            if (e.which == 13) {
+                sendMessage();
+            }
+        });
+    });
+
+    function setting_info() {
+        url = $("#web-url").val();
+        accountName = $("#account-name").val();
+        accountPassword = $("#account-password").val();
+        pid = $("#pid").val();
+        console.log(url, accountName, accountPassword, pid);
+    }
+
+    function account_register() {
+        setting_info();
+
+        var requestUrl = url + "/register?account=" + accountName + "&password=" + accountPassword;
+        $.get(requestUrl, function (data, status) {
+            $("#account-msg").show().html(data.message);
+            console.log(data, status);
+        });
+    }
+
+    function account_login() {
+        setting_info();
+
+        var requestUrl = url + "/login?pid=" + pid + "&account=" + accountName + "&password=" + accountPassword;
+        $.get(requestUrl, function (data, status) {
+            $("#account-msg").show().html(data.message);
+            console.log(data, status);
+
+            if (data.code == 0) {
+                token = data.data;
+                $('#panel_env').modal("hide");
+                connectToGate();
+            }
+        });
+    }
+
+    function connectToGate() {
+        pomelo.init({host: gateHost, port: gatePort, path: '/'}, function () {
+            console.log("Connected to gate " + gateHost + ":" + gatePort);
+
+            var loginRequest = new proto.pb.LoginRequest();
+            loginRequest.setServerid(serverId);
+            loginRequest.setToken(token);
+
+            var loginData = loginRequest.serializeBinary();
+
+            pomelo.request("gate.user.login", loginData, function (data) {
+                data = proto.pb.LoginResponse.deserializeBinary(data.body).toObject();
+                console.log("Login response:", data);
+
+                if (data.uid > 0) {
+                    currentUid = data.uid;
+                    $("#user-info").text("当前用户: UID=" + currentUid);
+                    $("#chat-panel").show();
+
+                    pomelo.on("onPrivateChatJson", onPrivateChat);
+                    pomelo.on("onKick", onKick);
+                }
+            });
+        });
+    }
+
+    function sendMessage() {
+        console.log("sendMessage called");
+
+        var targetUid = parseInt($("#target-uid").val());
+        var content = $("#message-input").val();
+
+        console.log("targetUid:", targetUid, "content:", content);
+
+        if (isNaN(targetUid) || targetUid <= 0) {
+            alert("请输入有效的目标用户UID");
+            return;
+        }
+
+        if (!content.trim()) {
+            alert("请输入消息内容");
+            return;
+        }
+
+        // 检查 pomelo 是否可用
+        if (!pomelo || !pomelo.request) {
+            alert("Pomelo 客户端未加载");
+            return;
+        }
+
+        console.log("pomelo object keys:", Object.keys(pomelo));
+
+        var request = {
+            targetUid: parseInt(targetUid),
+            content: content
+        };
+
+        console.log("Sending request:", JSON.stringify(request));
+
+        pomelo.request("gate.user.privateChatJson", request, function (data) {
+            var response = data.body;
+            if (typeof response !== 'object') {
+                try {
+                    response = JSON.parse(data.body);
+                } catch (e) {
+                    response = { code: -1, message: "解析响应失败: " + e.message };
+                }
+            }
+            console.log("Private chat response:", response);
+
+            if (response.code == 0) {
+                addMessage(currentUid, targetUid, content, true);
+                $("#message-input").val("");
+            } else {
+                alert("发送失败: " + response.message);
+            }
+        });
+    }
+
+    function onPrivateChat(data) {
+        console.log("Received private chat:", data);
+        addMessage(data.fromUid, currentUid, data.content, false);
+    }
+
+    function addMessage(fromUid, toUid, content, isSent) {
+        var messageClass = isSent ? "message-sent" : "message-received";
+        var direction = isSent ? "发送给" : "来自";
+        var html = '<div class="message ' + messageClass + '">';
+        html += '<strong>' + direction + ' UID:' + fromUid + '</strong><br>';
+        html += content;
+        html += '</div>';
+        $("#chat-messages").append(html);
+        $("#chat-messages").scrollTop($("#chat-messages")[0].scrollHeight);
+    }
+
+    function onKick(data) {
+        alert("您已被踢出游戏");
+        logout();
+    }
+
+    function logout() {
+        if (pomelo) {
+            pomelo.disconnect();
+        }
+        $("#chat-panel").hide();
+        $("#chat-messages").empty();
+        currentUid = null;
+        $('#panel_env').modal("show");
+    }
+</script>
+
+</html>

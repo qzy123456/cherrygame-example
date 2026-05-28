@@ -6,6 +6,7 @@ import (
 	rpcCenter "cherry-game/examples/demo_cluster/internal/rpc/center"
 	"cherry-game/examples/demo_cluster/internal/token"
 	"cherry-game/examples/demo_cluster/nodes/web/sdk"
+
 	cherryString "github.com/cherry-game/cherry/extend/string"
 	cherryLogger "github.com/cherry-game/cherry/logger"
 	cherryGin "github.com/cherry-game/components/gin"
@@ -22,6 +23,9 @@ func (p *Controller) Init() {
 	group.GET("/register", p.register)
 	group.GET("/login", p.login)
 	group.GET("/server/list/:pid", p.serverList)
+	// 私聊测试页面
+	group.GET("/chat/gate1", p.chatGate1)
+	group.GET("/chat/gate2", p.chatGate2)
 }
 
 // index h5客户端
@@ -142,4 +146,16 @@ func (p *Controller) serverList(c *cherryGin.Context) {
 	}
 
 	code.RenderResult(c, code.OK, dataList)
+}
+
+// chatGate1 私聊测试页面 - 连接网关1
+// http://127.0.0.1/chat/gate1
+func (p *Controller) chatGate1(c *cherryGin.Context) {
+	c.HTML200("chat_gate1.html")
+}
+
+// chatGate2 私聊测试页面 - 连接网关2
+// http://127.0.0.1/chat/gate2
+func (p *Controller) chatGate2(c *cherryGin.Context) {
+	c.HTML200("chat_gate2.html")
 }
