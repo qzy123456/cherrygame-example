@@ -27,7 +27,7 @@ const (
 	getUID             = "getUID"
 )
 
-// getSourcePath 获取源路径
+// getSourcePath 获取源路径--用于处理多个节点的情况
 func getSourcePath(app cfacade.IApplication) string {
 	return app.NodeID() + ".system"
 }

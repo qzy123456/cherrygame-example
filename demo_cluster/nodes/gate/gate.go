@@ -41,7 +41,7 @@ func Run(profileFilePath, nodeID string) {
 	// 注册数据配表组件，具体详见data-config的使用方法和参数配置
 	app.Register(data.New())
 
-	// 注册远程调用处理 Actor
+	// 注册远程调用处理 Actor，因为多个gate的话、这个是唯一的、不然找不到其他gate的数据
 	app.AddActors(&ActorRemote{})
 
 	app.Register()
