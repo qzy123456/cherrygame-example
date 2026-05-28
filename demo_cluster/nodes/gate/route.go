@@ -69,13 +69,38 @@ func gameNodeRoute(agent *pomelo.Agent, session *cproto.Session, route *pmessage
 			return
 		}
 	}
-
+	// 判断又没有传过来的game服务器id-也就是区服id
 	serverId := session.GetString(sessionKey.ServerID)
 	if serverId == "" {
 		return
 	}
-
+	// 每个用户设置一个子actor
 	childId := cstring.ToString(session.Uid)
+	// 构建目标 Actor 路径,- childId ：将用户 ID 转为字符串，作为子 Actor 的 ID
+	//- targetPath ：构建目标路径，格式为 {serverId}.{handleName}.{childId}
+	//- 例如： 10001.player.13 （10001 服的玩家 13）
 	targetPath := cfacade.NewChildPath(serverId, route.HandleName(), childId)
+	//- 将消息转发到指定的 Game 节点
+	// - 参数说明：
+	// - agent ：当前连接的 Agent
+	// - session ：会话信息
+	// - route ：路由信息（包含目标方法名）
+	// - msg ：消息内容
+	// - serverId ：目标 Game 节点 ID
+	// - targetPath ：目标 Actor 路径
+	// 完整流程：
+	// 客户端发送消息
+	//    ↓
+	// Gate 节点接收
+	// 		↓
+	// 从 Session 获取 serverId
+	// 		↓
+	// 构建目标路径：{serverId}.{handleName}.{uid}
+	// 		↓
+	// 调用 ClusterLocalDataRoute 转发
+	// 		↓
+	// 消息到达对应的 Game 节点
+	// 		↓
+	// 路由到具体的 actorPlayer 实例
 	pomelo.ClusterLocalDataRoute(agent, session, route, msg, serverId, targetPath)
 }
